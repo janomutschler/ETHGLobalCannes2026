@@ -1,5 +1,5 @@
 import { openai } from "./openaiClient.js";
-import { savePreference, getPreferences, checkPreference } from "./memory.js";
+import { savePreference, getPreferences, checkPreference, deletePreference, clearMemory, viewAllFacts } from "./memory.js";
 import { logOnChain, sendCoins } from "./chain.js";
 
 const tools = [
@@ -90,6 +90,49 @@ const tools = [
         required: ["to", "amount"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_preference",
+      description: "Delete preferences containing a specific search term. Example: 'delete pizza' removes all preferences mentioning pizza.",
+      parameters: {
+        type: "object",
+        properties: {
+          userId: { type: "string" },
+          searchTerm: { type: "string", description: "What to search for and delete" }
+        },
+        required: ["userId", "searchTerm"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "clear_memory",
+      description: "Clear all preferences and memories for the user. Use with caution!",
+      parameters: {
+        type: "object",
+        properties: {
+          userId: { type: "string" }
+        },
+        required: ["userId"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "view_all_facts",
+      description: "View all organized facts and preferences - organized into likes, facts (name, profession, etc), and other preferences.",
+      parameters: {
+        type: "object",
+        properties: {
+          userId: { type: "string" }
+        },
+        required: ["userId"]
+      }
+    }
   }
 ];
 
@@ -115,6 +158,12 @@ async function runTool(name, args) {
       return await logOnChain(args.action);
     case "send_coins":
       return await sendCoins(args.to, args.amount);
+    case "delete_preference":
+      return await deletePreference(args.userId, args.searchTerm);
+    case "clear_memory":
+      return await clearMemory(args.userId);
+    case "view_all_facts":
+      return await viewAllFacts(args.userId);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -186,12 +235,21 @@ export async function handleMessage(userId, input) {
     console.log(`[handleMessage] Found ${firstMessage.tool_calls.length} tool calls`);
     messages.push(firstMessage);
 
+    let txResults = [];
     for (const toolCall of firstMessage.tool_calls) {
       const name = toolCall.function.name;
       const args = JSON.parse(toolCall.function.arguments || "{}");
       console.log(`[handleMessage] Running tool: ${name} with args:`, args);
       const result = await runTool(name, args);
       console.log(`[handleMessage] Tool result:`, result);
+
+      // Capture transaction results for display
+      if ((name === "log_on_chain" || name === "send_coins") && result.txHash) {
+        txResults.push({
+          action: name === "log_on_chain" ? "logged on chain" : "sent coins",
+          txHash: result.txHash
+        });
+      }
 
       messages.push({
         role: "tool",
@@ -207,7 +265,14 @@ export async function handleMessage(userId, input) {
     });
 
     console.log("[handleMessage] Second response received:", second.choices[0].message.content);
-    return second.choices[0].message.content ?? "No final response.";
+    let finalResponse = second.choices[0].message.content ?? "No final response.";
+    
+    // Append tx hashes if any blockchain actions were performed
+    if (txResults.length > 0) {
+      finalResponse += "\n\n[BLOCKCHAIN_ACTIONS]\n" + txResults.map(tx => `${tx.action}: ${tx.txHash}`).join("\n");
+    }
+    
+    return finalResponse;
   } catch (error) {
     console.error("[handleMessage] ERROR:", error);
     throw error;

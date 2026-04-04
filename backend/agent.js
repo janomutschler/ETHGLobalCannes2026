@@ -1,6 +1,9 @@
-import { openai } from "./openaiClient.js";
+import { createChatCompletion } from "./llm-unified.js";
+import * as memEnhanced from "./memory-enhanced.js";
 import { savePreference, getPreferences, checkPreference, deletePreference, clearMemory, viewAllFacts } from "./memory.js";
-import { logOnChain, sendCoins } from "./chain.js";
+import { logOnChain, sendCoins, readLastAction } from "./chain.js";
+import { mergeStorageTools, executeStorageTool, STORAGE_TOOL_NAMES } from "./storage-0g.js";
+import { buildSystemPrompt } from "./personality.js";
 
 const tools = [
   {
@@ -94,6 +97,17 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "read_last_action",
+      description: "Read the last action that was logged to the blockchain. This queries the AgentActions contract to retrieve the permanently stored message.",
+      parameters: {
+        type: "object",
+        properties: {}
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "delete_preference",
       description: "Delete preferences containing a specific search term. Example: 'delete pizza' removes all preferences mentioning pizza.",
       parameters: {
@@ -136,7 +150,7 @@ const tools = [
   }
 ];
 
-async function runTool(name, args) {
+async function runTool(name, args, userId) {
   switch (name) {
     case "save_preference":
       return await savePreference(args.userId, args.preference);
@@ -155,9 +169,14 @@ async function runTool(name, args) {
       };
     }
     case "log_on_chain":
-      return await logOnChain(args.action);
+      // Create meaningful on-chain record
+      const timestamp = new Date().toISOString();
+      const meaningfulAction = `Agent Action [${timestamp}]: ${args.action} | User: ${userId}`;
+      return await logOnChain(meaningfulAction);
     case "send_coins":
       return await sendCoins(args.to, args.amount);
+    case "read_last_action":
+      return await readLastAction();
     case "delete_preference":
       return await deletePreference(args.userId, args.searchTerm);
     case "clear_memory":
@@ -190,25 +209,27 @@ function extractFact(preferences, key) {
 
 export async function handleMessage(userId, input) {
   try {
-    console.log(`[handleMessage] User: ${userId}, Input: ${input}`);
+    console.log(`[agent] User: ${userId}, Input: ${input}`);
     
+    // Record this turn in enhanced memory
+    await memEnhanced.recordTurn(userId, "user", input);
+
+    // Get memory context
+    const memoryContext = await memEnhanced.getMemorySummary(userId);
+    
+    // Build system prompt with personality
+    const systemPrompt = await buildSystemPrompt(
+      `You are an AI agent on 0G testnet. Remember: ${memoryContext.split('\n')[0]}`
+    );
+
+    // Build tools - merge all available tools
+    let allTools = [...tools];
+    allTools = mergeStorageTools(allTools);
+
     const messages = [
       {
         role: "system",
-        content: [
-          "You are an AI agent on 0G testnet that can perform real transactions and remember user preferences.",
-          `IMPORTANT: Always use userId: "${userId}" when calling tools.`,
-          "You MUST use tools to:",
-          "1. Save any preferences, facts, or information the user wants remembered (use save_preference)",
-          "2. Retrieve all stored information (use get_preferences)",
-          "3. Check specific preferences (use check_preference)",
-          "4. Query specific facts about the user (use query_fact)",
-          "5. Perform blockchain transactions (use send_coins, log_on_chain)",
-          "Never guess or make up facts about the user - always use tools to retrieve stored information.",
-          "When a user tells you something to remember, acknowledge what you saved.",
-          "When a user asks about their preferences or facts, use the appropriate tool first, then answer based on the results.",
-          "Keep responses natural and conversational."
-        ].join(" ")
+        content: `${systemPrompt}\n\nUser context:\n${memoryContext}`
       },
       {
         role: "user",
@@ -216,34 +237,41 @@ export async function handleMessage(userId, input) {
       }
     ];
 
-    console.log("[handleMessage] Calling OpenAI first request...");
-    const first = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages,
-      tools,
-      tool_choice: "auto"
-    });
+    console.log("[agent] Calling LLM with unified interface...");
+    const first = await createChatCompletion(messages, allTools);
 
-    console.log("[handleMessage] First response received:", JSON.stringify(first.choices[0].message, null, 2));
     const firstMessage = first.choices[0].message;
+    console.log("[agent] LLM response:", JSON.stringify(firstMessage, null, 2));
 
+    // Handle case with no tool calls
     if (!firstMessage.tool_calls || firstMessage.tool_calls.length === 0) {
-      console.log("[handleMessage] No tool calls, returning content");
-      return firstMessage.content ?? "No response.";
+      const contentMsg = firstMessage.content ?? "No response.";
+      await memEnhanced.recordTurn(userId, "assistant", contentMsg);
+      return contentMsg;
     }
 
-    console.log(`[handleMessage] Found ${firstMessage.tool_calls.length} tool calls`);
     messages.push(firstMessage);
-
     let txResults = [];
+
+    // Execute all tool calls
     for (const toolCall of firstMessage.tool_calls) {
       const name = toolCall.function.name;
       const args = JSON.parse(toolCall.function.arguments || "{}");
-      console.log(`[handleMessage] Running tool: ${name} with args:`, args);
-      const result = await runTool(name, args);
-      console.log(`[handleMessage] Tool result:`, result);
+      console.log(`[agent] Running tool: ${name}`, args);
 
-      // Capture transaction results for display
+      let result;
+
+      // Route to storage tools
+      if (STORAGE_TOOL_NAMES.has(name)) {
+        result = await executeStorageTool(name, args);
+      } else {
+        // Route to memory/chain/action tools
+        result = await runTool(name, args, userId);
+      }
+
+      console.log(`[agent] Tool result:`, result);
+
+      // Capture tx results for UI display
       if ((name === "log_on_chain" || name === "send_coins") && result.txHash) {
         txResults.push({
           action: name === "log_on_chain" ? "logged on chain" : "sent coins",
@@ -258,23 +286,24 @@ export async function handleMessage(userId, input) {
       });
     }
 
-    console.log("[handleMessage] Calling OpenAI second request...");
-    const second = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages
-    });
+    // Get final response from LLM
+    console.log("[agent] Calling LLM with tool results...");
+    const second = await createChatCompletion(messages);
+    const finalContent = second.choices[0].message.content ?? "No final response.";
+    
+    console.log("[agent] Final response:", finalContent);
+    await memEnhanced.recordTurn(userId, "assistant", finalContent);
 
-    console.log("[handleMessage] Second response received:", second.choices[0].message.content);
-    let finalResponse = second.choices[0].message.content ?? "No final response.";
-    
-    // Append tx hashes if any blockchain actions were performed
+    // Append tx hashes if any
+    let response = finalContent;
     if (txResults.length > 0) {
-      finalResponse += "\n\n[BLOCKCHAIN_ACTIONS]\n" + txResults.map(tx => `${tx.action}: ${tx.txHash}`).join("\n");
+      response += "\n\n[BLOCKCHAIN_ACTIONS]\n" + 
+        txResults.map(tx => `${tx.action}: ${tx.txHash}`).join("\n");
     }
-    
-    return finalResponse;
+
+    return response;
   } catch (error) {
-    console.error("[handleMessage] ERROR:", error);
+    console.error("[agent] ERROR:", error);
     throw error;
   }
 }

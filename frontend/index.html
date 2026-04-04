@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>0G Agent Demo</title>
+  </head>
+  <body>
+    <h1>0G Agent Demo</h1>
+    <input id="message" placeholder="Type a message" style="width: 400px;" />
+    <button id="send">Send</button>
+    <pre id="output"></pre>
+
+    <script>
+      const button = document.getElementById("send");
+      const input = document.getElementById("message");
+      const output = document.getElementById("output");
+
+      button.onclick = async () => {
+        const message = input.value;
+        const res = await fetch("http://localhost:3005/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: "current_user", message })
+        });
+        const data = await res.json();
+        output.textContent = data.reply || data.error;
+      };
+    </script>
+  </body>
+</html>

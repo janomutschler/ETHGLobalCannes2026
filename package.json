@@ -1,0 +1,37 @@
+{
+  "name": "my-trading-researcher",
+  "version": "1.0.0",
+  "description": "Sovereign Web2.5 Trading Researcher — automated volatility detection, AI analysis, and decentralized logging to 0G Storage",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": [
+    "trading",
+    "bybit",
+    "0g",
+    "zerogravity",
+    "openclaw",
+    "ai-agent",
+    "web3"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@0glabs/0g-ts-sdk": "^0.3.3",
+    "@clack/prompts": "^0.9.1",
+    "@sinclair/typebox": "^0.34.0",
+    "axios": "^1.7.0",
+    "bybit-api": "^3.10.0",
+    "dotenv": "^16.4.0",
+    "ethers": "^6.13.0",
+    "openclaw-sdk": "^2026.3.19"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

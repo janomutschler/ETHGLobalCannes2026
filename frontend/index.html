@@ -86,6 +86,45 @@
         color: #666;
         margin-top: 10px;
       }
+      .tx-section {
+        background-color: #e7f3ff;
+        border: 1px solid #b3d9ff;
+        padding: 10px;
+        margin-top: 8px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .tx-item {
+        margin: 5px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .tx-label {
+        font-weight: bold;
+        color: #0056b3;
+        min-width: 120px;
+      }
+      .tx-hash {
+        font-family: monospace;
+        font-size: 11px;
+        word-break: break-all;
+        color: #666;
+        flex: 1;
+        margin: 0 8px;
+      }
+      .tx-link {
+        background-color: #0056b3;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 10px;
+        white-space: nowrap;
+      }
+      .tx-link:hover {
+        background-color: #003d82;
+      }
     </style>
   </head>
   <body>
@@ -121,7 +160,53 @@
       function addMessage(text, type = 'agent') {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type}-message`;
-        messageDiv.textContent = text;
+        
+        // Parse blockchain actions from text
+        const parts = text.split('[BLOCKCHAIN_ACTIONS]\n');
+        const mainText = parts[0].trim();
+        const txData = parts[1];
+        
+        // Create main message content
+        const mainDiv = document.createElement('div');
+        mainDiv.textContent = mainText;
+        messageDiv.appendChild(mainDiv);
+        
+        // Add transaction section if present
+        if (txData) {
+          const txSection = document.createElement('div');
+          txSection.className = 'tx-section';
+          
+          const txLines = txData.trim().split('\n');
+          for (const line of txLines) {
+            const [action, hash] = line.split(': ');
+            if (action && hash) {
+              const txItem = document.createElement('div');
+              txItem.className = 'tx-item';
+              
+              const label = document.createElement('span');
+              label.className = 'tx-label';
+              label.textContent = action + ':';
+              
+              const hashSpan = document.createElement('span');
+              hashSpan.className = 'tx-hash';
+              hashSpan.textContent = hash;
+              
+              const link = document.createElement('a');
+              link.className = 'tx-link';
+              link.target = '_blank';
+              link.textContent = 'View';
+              const txHash = hash.trim();
+              link.href = `https://explorer.0g.ai/testnet/blockchain/txns/${txHash}/overview`;
+              
+              txItem.appendChild(label);
+              txItem.appendChild(hashSpan);
+              txItem.appendChild(link);
+              txSection.appendChild(txItem);
+            }
+          }
+          messageDiv.appendChild(txSection);
+        }
+        
         chatContainer.appendChild(messageDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
         chatHistory.push({ text, type, timestamp: new Date() });

@@ -136,8 +136,20 @@
       <button onclick="testMessage('what do I like?')">What do I like?</button>
       <button onclick="testMessage('my name is Diego')">Set Name</button>
       <button onclick="testMessage('what is my name?')">What is my name?</button>
-      <button onclick="testMessage('send 0.0001 0G to 0xC97928ABA933247C184362369A8f132e6ff93da6')">Send Coins</button>
       <button onclick="testMessage('log this test action on chain')">Log on Chain</button>
+    </div>
+
+    <div class="test-buttons">
+      <input id="sendTo" placeholder="Recipient address" style="width: 280px; padding: 8px; border-radius: 4px; border: 1px solid #ddd;" />
+      <input id="sendAmount" placeholder="Amount in 0G" style="width: 120px; padding: 8px; border-radius: 4px; border: 1px solid #ddd;" />
+      <button onclick="sendCoins()">Send Coins</button>
+    </div>
+
+    <div class="test-buttons">
+      <input id="deleteTerm" placeholder="Delete pref term" style="width: 240px; padding: 8px; border-radius: 4px; border: 1px solid #ddd;" />
+      <button onclick="deletePreferenceCommand()">Delete Preference</button>
+      <button onclick="clearMemory()">Clear Memory</button>
+      <button onclick="viewFacts()">View Facts</button>
     </div>
 
     <div class="chat-container" id="chatContainer"></div>
@@ -259,6 +271,34 @@
       function testMessage(message) {
         input.value = message;
         sendMessage(message);
+      }
+
+      async function sendCoins() {
+        const to = document.getElementById('sendTo').value.trim();
+        const amount = document.getElementById('sendAmount').value.trim();
+        if (!to || !amount) {
+          showError('Enter both recipient address and amount.');
+          return;
+        }
+        sendMessage(`send ${amount} 0G to ${to}`);
+      }
+
+      function deletePreferenceCommand() {
+        const term = document.getElementById('deleteTerm').value.trim();
+        if (!term) {
+          showError('Enter a delete term.');
+          return;
+        }
+        sendMessage(`delete ${term} from my preferences`);
+      }
+
+      function clearMemory() {
+        if (!confirm('Clear all saved memory for this user?')) return;
+        sendMessage('clear all my memories');
+      }
+
+      function viewFacts() {
+        sendMessage('view all my facts');
       }
 
       function handleKeyPress(event) {

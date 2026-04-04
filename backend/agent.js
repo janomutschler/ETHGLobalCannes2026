@@ -1,6 +1,5 @@
 import { createChatCompletion } from "./llm-unified.js";
 import * as memEnhanced from "./memory-enhanced.js";
-import { savePreference, getPreferences, checkPreference, deletePreference, clearMemory, viewAllFacts } from "./memory.js";
 import { logOnChain, sendCoins, readLastAction } from "./chain.js";
 import { mergeStorageTools, executeStorageTool, STORAGE_TOOL_NAMES } from "./storage-0g.js";
 import { buildSystemPrompt } from "./personality.js";
@@ -153,13 +152,13 @@ const tools = [
 async function runTool(name, args, userId) {
   switch (name) {
     case "save_preference":
-      return await savePreference(args.userId, args.preference);
+      return await memEnhanced.savePreference(args.userId, args.preference);
     case "get_preferences":
-      return await getPreferences(args.userId);
+      return await memEnhanced.getPreferences(args.userId);
     case "check_preference":
-      return await checkPreference(args.userId, args.item);
+      return await memEnhanced.checkPreference(args.userId, args.item);
     case "query_fact": {
-      const prefs = await getPreferences(args.userId);
+      const prefs = await memEnhanced.getPreferences(args.userId);
       const value = extractFact(prefs, args.factKey);
       return {
         ok: true,
@@ -178,11 +177,11 @@ async function runTool(name, args, userId) {
     case "read_last_action":
       return await readLastAction();
     case "delete_preference":
-      return await deletePreference(args.userId, args.searchTerm);
+      return await memEnhanced.deletePreference(args.userId, args.searchTerm);
     case "clear_memory":
-      return await clearMemory(args.userId);
+      return await memEnhanced.clearMemory(args.userId);
     case "view_all_facts":
-      return await viewAllFacts(args.userId);
+      return await memEnhanced.viewAllFacts(args.userId);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -229,7 +228,7 @@ export async function handleMessage(userId, input) {
     const messages = [
       {
         role: "system",
-        content: `${systemPrompt}\n\nUser context:\n${memoryContext}`
+        content: `${systemPrompt}\n\nUser context:\n${memoryContext}\n\nIMPORTANT: When calling memory tools, ALWAYS use userId: "${userId}"`
       },
       {
         role: "user",

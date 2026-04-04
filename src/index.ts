@@ -11,22 +11,36 @@ import {
   executeLogAnalysisTool,
   LOG_ANALYSIS_TOOL_NAME,
 } from "./agent/tools.js";
-import { createClient } from "openclaw-sdk";
+import { createClient, type OpenClawClient } from "openclaw-sdk";
 
 const WATCHLIST = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "DOGEUSDT", "XRPUSDT"];
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+interface AgentResponse {
+  content?: string;
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    arguments: Record<string, unknown>;
+  }>;
+}
+
+function buildClient(): OpenClawClient {
+  return createClient({
+    url: process.env.OPENCLAW_GATEWAY_URL ?? "wss://gateway.openclaw.ai",
+    clientId: "trading-researcher",
+    auth: {
+      token: process.env.AI_API_KEY,
+    },
+    requestTimeoutMs: 120_000,
+  });
+}
 
 async function runAgentAnalysis(
   volatility: VolatilityResult,
   newsText: string,
 ): Promise<void> {
-  const client = createClient({
-    url: process.env.OPENCLAW_GATEWAY_URL ?? "wss://gateway.openclaw.ai",
-    credentials: {
-      apiKey: process.env.AI_API_KEY!,
-    },
-  });
-
+  const client = buildClient();
   await client.connect();
 
   try {
@@ -40,23 +54,27 @@ async function runAgentAnalysis(
       newsText,
     ].join("\n");
 
-    const response = await client.chat({
-      model: "default",
-      system: ANALYST_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userMessage }],
-      tools: [
-        {
-          name: logAnalysisTool.name,
-          description: logAnalysisTool.description,
-          parameters: logAnalysisTool.parameters,
-        },
-      ],
+    const response = await client.request<AgentResponse>("node.invoke", {
+      target: "chat",
+      params: {
+        system: ANALYST_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userMessage }],
+        tools: [
+          {
+            name: logAnalysisTool.name,
+            description: logAnalysisTool.description,
+            parameters: logAnalysisTool.parameters,
+          },
+        ],
+      },
     });
 
     if (response.toolCalls && response.toolCalls.length > 0) {
       for (const call of response.toolCalls) {
         if (call.name === LOG_ANALYSIS_TOOL_NAME) {
-          const result = await executeLogAnalysisTool(call.arguments as { summary: string });
+          const result = await executeLogAnalysisTool(
+            call.arguments as { summary: string },
+          );
           console.log(`  [0G] ${result.content[0].text}`);
         }
       }
@@ -66,12 +84,14 @@ async function runAgentAnalysis(
       console.log(`  [AI] ${response.content}`);
     }
   } finally {
-    await client.disconnect();
+    client.disconnect();
   }
 }
 
 async function scanOnce(): Promise<void> {
-  console.log(`\n[${new Date().toISOString()}] Scanning ${WATCHLIST.length} tokens...`);
+  console.log(
+    `\n[${new Date().toISOString()}] Scanning ${WATCHLIST.length} tokens...`,
+  );
 
   for (const symbol of WATCHLIST) {
     try {
@@ -95,7 +115,9 @@ async function scanOnce(): Promise<void> {
       } catch (newsErr) {
         const msg =
           newsErr instanceof Error ? newsErr.message : "Unknown news error";
-        console.error(`  [NEWS ERROR] ${msg} — proceeding with no news context`);
+        console.error(
+          `  [NEWS ERROR] ${msg} — proceeding with no news context`,
+        );
         newsText = "News fetch failed. Analyze based on price action alone.";
       }
 
@@ -103,12 +125,16 @@ async function scanOnce(): Promise<void> {
         await runAgentAnalysis(volatility, newsText);
       } catch (agentErr) {
         const msg =
-          agentErr instanceof Error ? agentErr.message : "Unknown agent error";
+          agentErr instanceof Error
+            ? agentErr.message
+            : "Unknown agent error";
         console.error(`  [AGENT ERROR] ${msg}`);
       }
     } catch (priceErr) {
       const msg =
-        priceErr instanceof Error ? priceErr.message : "Unknown price error";
+        priceErr instanceof Error
+          ? priceErr.message
+          : "Unknown price error";
       console.error(`  [BYBIT ERROR] ${symbol}: ${msg}`);
     }
   }

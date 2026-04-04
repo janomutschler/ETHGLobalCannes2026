@@ -52,7 +52,12 @@ export async function logAnalysisTo0G(
     const signer = new ethers.Wallet(privateKey, provider);
     const indexer = new Indexer(INDEXER_RPC);
 
-    const [tx, uploadErr] = await indexer.upload(file, EVM_RPC, signer);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 0G SDK re-exports ethers CJS Signer; structurally identical to our ESM Signer
+    const [result, uploadErr] = await indexer.upload(
+      file,
+      EVM_RPC,
+      signer as any,
+    );
     await file.close();
 
     if (uploadErr !== null) {
@@ -60,8 +65,8 @@ export async function logAnalysisTo0G(
     }
 
     return {
-      txHash: tx as string,
-      rootHash,
+      txHash: result.txHash,
+      rootHash: result.rootHash ?? rootHash,
       timestamp,
     };
   } finally {

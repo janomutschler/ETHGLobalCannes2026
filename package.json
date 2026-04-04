@@ -1,0 +1,21 @@
+{
+    "name": "0g-agent",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "start": "node agent.mjs",
+        "ui": "node server.mjs",
+        "preflight": "node scripts/preflight.mjs",
+        "mcp-tools": "node scripts/list-mcp-tools.mjs",
+        "openclaw:install-plugin": "npm install --prefix plugins/openclaw-0g"
+    },
+    "dependencies": {
+        "@0gfoundation/0g-ts-sdk": "^1.2.1",
+        "@google/generative-ai": "^0.24.0",
+        "@modelcontextprotocol/sdk": "^1.12.0",
+        "dotenv": "^16.4.5",
+        "ethers": "6.13.1",
+        "openai": "^4.73.0"
+    }
+}

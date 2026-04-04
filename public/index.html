@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>0G agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --bg-subtle: #fafafa;
+        --border: #e8e8ec;
+        --text: #0a0a0b;
+        --text-muted: #6b6b73;
+        --text-faint: #9c9ca3;
+        --user-bg: #0a0a0b;
+        --user-fg: #ffffff;
+        --bot-bg: #f4f4f6;
+        --err: #b42318;
+        --focus: #0a0a0b;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        font-weight: 400;
+        color: var(--text);
+        background: var(--bg);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .app {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        max-width: 28rem;
+        margin: 0 auto;
+        padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+      }
+
+      @media (max-width: 480px) {
+        .app {
+          border-left: none;
+          border-right: none;
+        }
+      }
+
+      header {
+        flex-shrink: 0;
+        padding: 1.25rem 1.25rem 1rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .logo {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.35rem;
+        background: var(--user-bg);
+        display: grid;
+        place-items: center;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--user-fg);
+      }
+
+      .titles h1 {
+        margin: 0;
+        font-family: "Inter", sans-serif;
+        font-size: 1.125rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        line-height: 1.2;
+      }
+
+      .titles .tagline {
+        margin: 0.2rem 0 0;
+        font-family: "Inter", sans-serif;
+        font-size: 0.75rem;
+        font-weight: 400;
+        font-style: italic;
+        color: var(--text-muted);
+        letter-spacing: -0.01em;
+      }
+
+      .titles .tagline .mono {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-style: normal;
+        font-weight: 500;
+        font-size: 0.7rem;
+        letter-spacing: 0.02em;
+        color: var(--text);
+      }
+
+      .messages {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 1rem 1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        scroll-behavior: smooth;
+        background: var(--bg-subtle);
+      }
+
+      .messages::-webkit-scrollbar {
+        width: 4px;
+      }
+      .messages::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 99px;
+      }
+
+      .welcome {
+        text-align: left;
+        padding: 1.5rem 0.25rem 0.5rem;
+        color: var(--text-muted);
+        font-size: 0.8125rem;
+        line-height: 1.6;
+        font-weight: 400;
+      }
+
+      .welcome strong {
+        font-weight: 600;
+        color: var(--text);
+        font-style: normal;
+      }
+
+      .welcome em {
+        font-style: italic;
+        font-weight: 400;
+        color: var(--text-muted);
+      }
+
+      .welcome code {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.72rem;
+        font-weight: 500;
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.2rem;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      .row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+        animation: fadeIn 0.25s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      .row.user {
+        flex-direction: row-reverse;
+      }
+
+      .avatar {
+        flex-shrink: 0;
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 0.25rem;
+        display: grid;
+        place-items: center;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.55rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .row.user .avatar {
+        background: var(--user-bg);
+        color: var(--user-fg);
+      }
+
+      .row.assistant .avatar,
+      .row.wallet .avatar {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      .bubble {
+        max-width: 86%;
+        padding: 0.65rem 0.85rem;
+        border-radius: 0.65rem;
+        font-size: 0.875rem;
+        font-weight: 400;
+        line-height: 1.55;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+      }
+
+      .row.user .bubble {
+        background: var(--user-bg);
+        color: var(--user-fg);
+        font-weight: 400;
+        border-bottom-right-radius: 0.2rem;
+      }
+
+      .row.assistant .bubble,
+      .row.wallet .bubble {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-bottom-left-radius: 0.2rem;
+      }
+
+      .wallet-proposal-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+      }
+
+      .wallet-proposal-text {
+        font-size: 0.82rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+
+      .wallet-proposal-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        align-items: center;
+      }
+
+      .row.assistant .bubble.error {
+        border-color: #fecdca;
+        background: #fff8f7;
+        color: var(--err);
+        font-weight: 500;
+      }
+
+      .typing .bubble {
+        padding: 0.7rem 0.9rem;
+      }
+
+      .dots {
+        display: flex;
+        gap: 0.3rem;
+        align-items: center;
+      }
+
+      .dots span {
+        width: 0.3rem;
+        height: 0.3rem;
+        border-radius: 50%;
+        background: var(--text-faint);
+        animation: bounce 1.1s ease infinite;
+      }
+
+      .dots span:nth-child(2) {
+        animation-delay: 0.12s;
+      }
+      .dots span:nth-child(3) {
+        animation-delay: 0.24s;
+      }
+
+      @keyframes bounce {
+        0%,
+        60%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.35;
+        }
+        30% {
+          transform: translateY(-3px);
+          opacity: 1;
+        }
+      }
+
+      .composer {
+        flex-shrink: 0;
+        padding: 0.75rem 1rem 1rem;
+        border-top: 1px solid var(--border);
+        background: var(--bg);
+      }
+
+      .composer-inner {
+        display: flex;
+        gap: 0.45rem;
+        align-items: flex-end;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.4rem 0.4rem 0.4rem 0.75rem;
+      }
+
+      .composer-inner:focus-within {
+        border-color: var(--focus);
+        box-shadow: 0 0 0 1px var(--focus);
+      }
+
+      #input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        color: var(--text);
+        font-family: "Inter", sans-serif;
+        font-size: 0.875rem;
+        font-weight: 400;
+        line-height: 1.45;
+        resize: none;
+        min-height: 2.4rem;
+        max-height: 7rem;
+        padding: 0.35rem 0;
+      }
+
+      #input::placeholder {
+        color: var(--text-faint);
+        font-style: italic;
+        font-weight: 400;
+      }
+
+      #input:focus {
+        outline: none;
+      }
+
+      #send {
+        flex-shrink: 0;
+        width: 2.4rem;
+        height: 2.4rem;
+        border: none;
+        border-radius: 0.35rem;
+        background: var(--user-bg);
+        color: var(--user-fg);
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        transition: opacity 0.15s ease;
+      }
+
+      #send:hover:not(:disabled) {
+        opacity: 0.88;
+      }
+
+      #send:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      #send svg {
+        width: 1.05rem;
+        height: 1.05rem;
+      }
+
+      .hint {
+        text-align: center;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.625rem;
+        font-weight: 400;
+        font-style: italic;
+        color: var(--text-faint);
+        margin-top: 0.5rem;
+        letter-spacing: 0.02em;
+      }
+
+      .wallet-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.85rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--border);
+      }
+
+      .btn-wallet {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.68rem;
+        font-weight: 600;
+        padding: 0.4rem 0.65rem;
+        border-radius: 0.3rem;
+        border: 1px solid var(--border);
+        background: var(--bg-subtle);
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      .btn-wallet:hover {
+        background: var(--border);
+      }
+
+      .wallet-status {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.62rem;
+        color: var(--text-muted);
+        word-break: break-all;
+        flex: 1;
+        min-width: 8rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div class="brand">
+          <div class="logo">0G</div>
+          <div class="titles">
+            <h1>0G agent</h1>
+            <p class="tagline">
+              <span class="mono">LLM</span> + <span class="mono">MCP</span>
+              <span> · local only</span>
+            </p>
+          </div>
+        </div>
+        <div class="wallet-row">
+          <button type="button" id="btn-wallet" class="btn-wallet">Connect MetaMask</button>
+          <span id="wallet-status" class="wallet-status">Wallet disconnected — sends happen in your browser only.</span>
+        </div>
+      </header>
+
+      <div class="messages" id="messages" aria-live="polite">
+        <div class="welcome" id="welcome">
+          <strong>Hi —</strong> ask anything. For 0G, try listing compute providers or what you want on the network.
+          <br /><br />
+          <strong>Memory:</strong> recent chats → <code>memory/short-term.txt</code>. Durable facts: start with
+          <code>!remember …</code> → <code>memory/long-term.txt</code>.
+          <br /><br />
+          <strong>Voice:</strong> edit <code>soul.md</code> — the agent mirrors your tone and emoji style.
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="composer-inner">
+          <textarea
+            id="input"
+            rows="1"
+            placeholder="Write a message…"
+            autocomplete="off"
+          ></textarea>
+          <button type="button" id="send" aria-label="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+            </svg>
+          </button>
+        </div>
+        <p class="hint">
+          enter — send · shift+enter — line · <code>/balance</code> · <code>/send</code> ·
+          <code>/sendtoken</code> · or ask the agent to send (MetaMask + confirm button)
+        </p>
+      </div>
+    </div>
+
+    <script type="module">
+      import {
+        BrowserProvider,
+        parseEther,
+        parseUnits,
+        Interface,
+        formatEther,
+      } from "https://esm.sh/ethers@6.13.4";
+
+      const messagesEl = document.getElementById("messages");
+      const welcomeEl = document.getElementById("welcome");
+      const input = document.getElementById("input");
+      const sendBtn = document.getElementById("send");
+      const btnWallet = document.getElementById("btn-wallet");
+      const walletStatus = document.getElementById("wallet-status");
+
+      /** @type {BrowserProvider | null} */
+      let browserProvider = null;
+
+      const CHAIN_NAMES = {
+        1: "Ethereum",
+        11155111: "Sepolia",
+        17000: "Holesky",
+        137: "Polygon",
+        42161: "Arbitrum One",
+        8453: "Base",
+        56: "BSC",
+      };
+
+      const NATIVE_SYMBOL = {
+        1: "ETH",
+        11155111: "ETH",
+        17000: "ETH",
+        137: "POL",
+        42161: "ETH",
+        8453: "ETH",
+        56: "BNB",
+      };
+
+      function nativeSymbol(chainId) {
+        return NATIVE_SYMBOL[Number(chainId)] || "native";
+      }
+
+      function formatNativeShort(wei) {
+        const s = formatEther(wei);
+        const m = /^(\d+)\.(\d+)$/.exec(s);
+        if (!m) return s;
+        const frac = m[2].replace(/0+$/, "").slice(0, 8);
+        return frac ? `${m[1]}.${frac}` : m[1];
+      }
+
+      function scrollToBottom() {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function appendBubble(role, text, { error = false } = {}) {
+        if (welcomeEl) welcomeEl.remove();
+
+        const row = document.createElement("div");
+        row.className = `row ${role}`;
+
+        const av = document.createElement("div");
+        av.className = "avatar";
+        av.textContent = role === "user" ? "YOU" : role === "wallet" ? "Ξ" : "0G";
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble" + (error ? " error" : "");
+        bubble.textContent = text;
+
+        row.appendChild(av);
+        row.appendChild(bubble);
+        messagesEl.appendChild(row);
+        scrollToBottom();
+        return row;
+      }
+
+      function showTyping() {
+        const row = document.createElement("div");
+        row.className = "row assistant typing";
+        row.id = "typing-indicator";
+
+        const av = document.createElement("div");
+        av.className = "avatar";
+        av.textContent = "0G";
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        const dots = document.createElement("div");
+        dots.className = "dots";
+        dots.innerHTML = "<span></span><span></span><span></span>";
+        bubble.appendChild(dots);
+
+        row.appendChild(av);
+        row.appendChild(bubble);
+        messagesEl.appendChild(row);
+        scrollToBottom();
+      }
+
+      function removeTyping() {
+        document.getElementById("typing-indicator")?.remove();
+      }
+
+      function autosize() {
+        input.style.height = "auto";
+        input.style.height = Math.min(input.scrollHeight, 7 * 16) + "px";
+      }
+
+      const HEX_ADDR = /^0x[a-fA-F0-9]{40}$/;
+      const DEC_AMT = /^[0-9]+(\.[0-9]+)?$/;
+
+      /**
+       * Parse <<WALLET_REQUEST>>…<</WALLET_REQUEST>> from model reply.
+       * @returns {{ visible: string, cmd: object | null, parseError: string | null }}
+       */
+      function parseAgentWalletRequest(text) {
+        const raw = text || "";
+        const re = /<<WALLET_REQUEST>>([\s\S]*?)<<\/WALLET_REQUEST>>/i;
+        const m = re.exec(raw);
+        if (!m) {
+          return { visible: raw.trim(), cmd: null, parseError: null };
+        }
+        const visible = raw.replace(re, "").trim();
+        try {
+          const j = JSON.parse(m[1].trim());
+          if (
+            j.action === "native_send" &&
+            HEX_ADDR.test(j.to) &&
+            DEC_AMT.test(String(j.amount))
+          ) {
+            return {
+              visible,
+              cmd: { kind: "native", to: j.to, amount: String(j.amount) },
+              parseError: null,
+            };
+          }
+          if (
+            j.action === "erc20_send" &&
+            HEX_ADDR.test(j.token) &&
+            HEX_ADDR.test(j.to) &&
+            DEC_AMT.test(String(j.amount))
+          ) {
+            return {
+              visible,
+              cmd: {
+                kind: "erc20",
+                token: j.token,
+                to: j.to,
+                amount: String(j.amount),
+              },
+              parseError: null,
+            };
+          }
+          return {
+            visible,
+            cmd: null,
+            parseError: "Invalid wallet request (action, address, or amount).",
+          };
+        } catch (e) {
+          return {
+            visible,
+            cmd: null,
+            parseError: e?.message || "Invalid JSON in wallet request.",
+          };
+        }
+      }
+
+      function appendWalletProposalRow(summary, cmd) {
+        if (welcomeEl) welcomeEl.remove();
+
+        const row = document.createElement("div");
+        row.className = "row wallet wallet-proposal";
+
+        const av = document.createElement("div");
+        av.className = "avatar";
+        av.textContent = "Ξ";
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble wallet-proposal-inner";
+
+        const p = document.createElement("div");
+        p.className = "wallet-proposal-text";
+        p.textContent = "Agent proposed transaction:\n" + summary;
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-wallet";
+        btn.textContent = "Confirm in MetaMask";
+
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          await runWalletSend(cmd);
+          btn.disabled = false;
+        });
+
+        const actions = document.createElement("div");
+        actions.className = "wallet-proposal-actions";
+        actions.appendChild(btn);
+
+        bubble.appendChild(p);
+        bubble.appendChild(actions);
+        row.appendChild(av);
+        row.appendChild(bubble);
+        messagesEl.appendChild(row);
+        scrollToBottom();
+      }
+
+      function appendAssistantWithOptionalWalletRequest(fullReply) {
+        const { visible, cmd, parseError } = parseAgentWalletRequest(fullReply);
+        const shown = visible || "(empty reply)";
+        appendBubble("assistant", shown);
+        if (parseError) {
+          appendBubble("assistant", parseError, { error: true });
+          return;
+        }
+        if (!cmd) return;
+        const summary =
+          cmd.kind === "native"
+            ? `Native send: ${cmd.amount} → ${cmd.to}`
+            : `ERC-20 (18 dec): ${cmd.amount} → ${cmd.to}\nToken: ${cmd.token}`;
+        appendWalletProposalRow(summary, cmd);
+      }
+
+      function parseWalletCommand(text) {
+        const t = text.trim();
+        const native = /^\/send\s+(0x[a-fA-F0-9]{40})\s+([0-9.]+)\s*$/i.exec(t);
+        if (native) {
+          return { kind: "native", to: native[1], amount: native[2] };
+        }
+        const erc20 =
+          /^\/sendtoken\s+(0x[a-fA-F0-9]{40})\s+(0x[a-fA-F0-9]{40})\s+([0-9.]+)\s*$/i.exec(t);
+        if (erc20) {
+          return {
+            kind: "erc20",
+            token: erc20[1],
+            to: erc20[2],
+            amount: erc20[3],
+          };
+        }
+        if (/^\/balance\s*$/i.test(t)) {
+          return { kind: "balance" };
+        }
+        return null;
+      }
+
+      async function refreshWalletLabel() {
+        if (!browserProvider) {
+          walletStatus.textContent = "Wallet disconnected — sends happen in your browser only.";
+          btnWallet.textContent = "Connect MetaMask";
+          return;
+        }
+        try {
+          const signer = await browserProvider.getSigner();
+          const addr = await signer.getAddress();
+          const net = await browserProvider.getNetwork();
+          const cid = Number(net.chainId);
+          const name = CHAIN_NAMES[cid] || `chain ${net.chainId}`;
+          const short = `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+          const bal = await browserProvider.getBalance(addr);
+          const sym = nativeSymbol(cid);
+          const balStr = formatNativeShort(bal);
+          walletStatus.textContent = `${short} · ${name} · ${balStr} ${sym}`;
+          btnWallet.textContent = "Wallet connected";
+        } catch {
+          walletStatus.textContent = "Could not read wallet";
+        }
+      }
+
+      async function connectInjectedProvider(requestAccounts) {
+        if (!window.ethereum) return false;
+        browserProvider = new BrowserProvider(window.ethereum);
+        if (requestAccounts) {
+          await browserProvider.send("eth_requestAccounts", []);
+        }
+        await refreshWalletLabel();
+        return true;
+      }
+
+      /** Restore session after reload if MetaMask already authorized this origin. */
+      async function tryReconnectWallet() {
+        if (!window.ethereum) return;
+        try {
+          const accounts = await window.ethereum.request({ method: "eth_accounts" });
+          if (!accounts?.length) return;
+          await connectInjectedProvider(false);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      btnWallet.addEventListener("click", async () => {
+        if (!window.ethereum) {
+          appendBubble(
+            "assistant",
+            "No injected wallet found. Install MetaMask (or another EIP-1193 wallet) and reload.",
+            { error: true }
+          );
+          return;
+        }
+        try {
+          await connectInjectedProvider(true);
+          if (welcomeEl) welcomeEl.remove();
+          appendBubble("wallet", "MetaMask connected. Check the network in MetaMask before sending.");
+        } catch (e) {
+          appendBubble("assistant", String(e?.message || e), { error: true });
+        }
+      });
+
+      if (window.ethereum?.on) {
+        window.ethereum.on("chainChanged", () => {
+          if (browserProvider) refreshWalletLabel();
+        });
+        window.ethereum.on("accountsChanged", (accts) => {
+          if (!accts?.length) {
+            browserProvider = null;
+            refreshWalletLabel();
+            return;
+          }
+          if (window.ethereum) {
+            browserProvider = new BrowserProvider(window.ethereum);
+            refreshWalletLabel();
+          }
+        });
+      }
+
+      tryReconnectWallet();
+
+      async function runWalletBalance() {
+        if (!browserProvider) {
+          appendBubble("assistant", "Connect MetaMask first (button above).", { error: true });
+          return;
+        }
+        sendBtn.disabled = true;
+        try {
+          const signer = await browserProvider.getSigner();
+          const addr = await signer.getAddress();
+          const net = await browserProvider.getNetwork();
+          const cid = Number(net.chainId);
+          const name = CHAIN_NAMES[cid] || `chain ${cid}`;
+          const sym = nativeSymbol(cid);
+          const bal = await browserProvider.getBalance(addr);
+          appendBubble(
+            "wallet",
+            `Native balance (${name}):\n${formatEther(bal)} ${sym}\n${addr}`
+          );
+          await refreshWalletLabel();
+        } catch (e) {
+          const msg = e?.info?.error?.message || e?.shortMessage || e?.message || String(e);
+          appendBubble("assistant", `Could not read balance: ${msg}`, { error: true });
+        } finally {
+          sendBtn.disabled = false;
+          input.focus();
+          scrollToBottom();
+        }
+      }
+
+      async function runWalletSend(cmd) {
+        if (!browserProvider) {
+          appendBubble("assistant", "Connect MetaMask first (button above).", { error: true });
+          return;
+        }
+        sendBtn.disabled = true;
+        try {
+          const signer = await browserProvider.getSigner();
+          if (cmd.kind === "native") {
+            const tx = await signer.sendTransaction({
+              to: cmd.to,
+              value: parseEther(cmd.amount),
+            });
+            appendBubble(
+              "wallet",
+              `Submitted native transfer.\nTx hash: ${tx.hash}\nWait for confirmation in MetaMask / explorer.`
+            );
+            return;
+          }
+          const iface = new Interface([
+            "function transfer(address to, uint256 amount) returns (bool)",
+          ]);
+          const data = iface.encodeFunctionData("transfer", [
+            cmd.to,
+            parseUnits(cmd.amount, 18),
+          ]);
+          const tx = await signer.sendTransaction({
+            to: cmd.token,
+            data,
+            value: 0n,
+          });
+          appendBubble(
+            "wallet",
+            `Submitted ERC-20 transfer (18 decimals).\nTx hash: ${tx.hash}\nToken contract: ${cmd.token}`
+          );
+        } catch (e) {
+          const msg = e?.info?.error?.message || e?.shortMessage || e?.message || String(e);
+          appendBubble("assistant", `Wallet / tx error: ${msg}`, { error: true });
+        } finally {
+          sendBtn.disabled = false;
+          input.focus();
+          scrollToBottom();
+        }
+      }
+
+      async function getWalletSnapshotForApi() {
+        if (!browserProvider) return null;
+        try {
+          const signer = await browserProvider.getSigner();
+          const addr = await signer.getAddress();
+          const net = await browserProvider.getNetwork();
+          const cid = Number(net.chainId);
+          const bal = await browserProvider.getBalance(addr);
+          return {
+            address: addr,
+            chainId: cid,
+            chainName: CHAIN_NAMES[cid] || `chain ${cid}`,
+            balanceNative: formatEther(bal),
+            symbol: nativeSymbol(cid),
+          };
+        } catch {
+          return null;
+        }
+      }
+
+      async function sendMessage() {
+        const text = input.value.trim();
+        if (!text) return;
+
+        const walletCmd = parseWalletCommand(text);
+        if (walletCmd) {
+          input.value = "";
+          autosize();
+          appendBubble("user", text);
+          if (walletCmd.kind === "balance") {
+            await runWalletBalance();
+          } else {
+            await runWalletSend(walletCmd);
+          }
+          return;
+        }
+
+        input.value = "";
+        autosize();
+        appendBubble("user", text);
+        sendBtn.disabled = true;
+        showTyping();
+
+        try {
+          const wallet = await getWalletSnapshotForApi();
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: text,
+              ...(wallet ? { wallet } : {}),
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          removeTyping();
+
+          if (!res.ok) {
+            appendBubble("assistant", data.error || res.statusText || "Something went wrong.", {
+              error: true,
+            });
+            return;
+          }
+
+          appendAssistantWithOptionalWalletRequest(data.reply ?? "");
+        } catch (e) {
+          removeTyping();
+          appendBubble("assistant", String(e.message || e), { error: true });
+        } finally {
+          sendBtn.disabled = false;
+          input.focus();
+          scrollToBottom();
+        }
+      }
+
+      sendBtn.addEventListener("click", sendMessage);
+
+      input.addEventListener("input", autosize);
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      input.focus();
+    </script>
+  </body>
+</html>

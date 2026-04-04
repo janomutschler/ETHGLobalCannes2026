@@ -1,0 +1,16 @@
+{
+  "id": "openclaw-0g",
+  "name": "0G Agent bridge",
+  "description": "Expose zerog_agent_chat — forwards messages to the 0g-agent UI server (POST /api/chat).",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "baseUrl": {
+        "type": "string",
+        "description": "0g-agent server base URL (no trailing slash), e.g. http://127.0.0.1:3847. Falls back to OG_AGENT_BASE_URL."
+      }
+    }
+  }
+}

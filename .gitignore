@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Secrets & environment (never commit real keys — GitHub push protection scans tracked files)
+.env
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+credentials.json
+secrets.json
+*.p12
+*.pfx
+
+# Agent memory & RAG (local state)
+memory/short-term.txt
+memory/long-term.txt
+memory/rag-store.json
+memory/zerog-roots.json
+
+# Logs & debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Build / cache
+dist/
+build/
+.cache/
+*.tsbuildinfo
+
+# Optional local tooling
+.turbo/
+.vercel/
+
+# Editor (keep out of repo unless team shares settings)
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

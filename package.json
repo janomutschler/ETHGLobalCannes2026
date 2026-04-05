@@ -1,0 +1,22 @@
+{
+  "name": "0g-agent-unified",
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node backend/server.js",
+    "deploy": "hardhat run scripts/deploy.cjs --network og_testnet"
+  },
+  "dependencies": {
+    "@0gfoundation/0g-ts-sdk": "^1.2.1",
+    "@google/generative-ai": "^0.24.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.2",
+    "express": "^4.19.2",
+    "openai": "^4.56.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.24.0"
+  }
+}
